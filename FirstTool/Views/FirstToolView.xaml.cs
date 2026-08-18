@@ -9,6 +9,7 @@ namespace FirstTool.Views
     {
         public FirstToolView()
         {
+            DataContext = new FirstToolViewModel();
             InitializeComponent();
         }
 
