@@ -104,13 +104,7 @@
                     Binding="{Binding StorageType}"
                     Width="*"
                     IsReadOnly="True"/>
-
-                <DataGridCheckBoxColumn
-                    Header="Read Only"
-                    Binding="{Binding IsReadOnly}"
-                    Width="*"
-                    IsReadOnly="True"/>
-
+                
             </DataGrid.Columns>
         </DataGrid>
 

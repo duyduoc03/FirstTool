@@ -1,4 +1,4 @@
-using FirstTool.ViewModels;
+using FirstTool.Helpers;
 using RevitTool.Models;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,7 +9,7 @@ namespace FirstTool.Views
     {
         public FirstToolView()
         {
-            DataContext = new FirstToolViewModel();
+            DataContext = new FirstToolViewModel(() => RevitWindowHelper.BringToFront(this));
             InitializeComponent();
         }
 
