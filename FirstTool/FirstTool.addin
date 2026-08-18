@@ -1,0 +1,14 @@
+<RevitAddIns>
+    <AddIn Type="Application">
+        <Name>FirstTool</Name>
+        <Assembly>FirstTool\FirstTool.dll</Assembly>
+        <AddInId>67B4112A-BBBC-4040-8BAE-6A9D2CDDC3FE</AddInId>
+        <FullClassName>FirstTool.Application</FullClassName>
+        <VendorId>Development</VendorId>
+        <VendorDescription></VendorDescription>
+    </AddIn>
+    <ManifestSettings>
+        <UseRevitContext>False</UseRevitContext>
+        <ContextName>FirstTool</ContextName>
+    </ManifestSettings>
+</RevitAddIns>
