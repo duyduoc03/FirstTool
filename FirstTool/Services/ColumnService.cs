@@ -42,19 +42,7 @@ public class ColumnService
         if (element == null)
             throw new InvalidOperationException("Không tìm thấy phần tử đã chọn.");
 
-        if (!IsStructuralColumn(element))
-            throw new InvalidOperationException(
-                "Đối tượng được chọn không phải cột kết cấu.\nVui lòng chọn lại cột.");
-
         return element;
-    }
-
-    private static bool IsStructuralColumn(Element element)
-    {
-        if (element is FamilyInstance fi && fi.StructuralType == StructuralType.Column)
-            return true;
-
-        return element.Category?.Id.Value == (long)BuiltInCategory.OST_StructuralColumns;
     }
 
     private ColumnModel ToColumnModel(Element element) => new()

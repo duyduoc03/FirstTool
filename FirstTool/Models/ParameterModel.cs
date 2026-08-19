@@ -14,4 +14,16 @@ public partial class ParameterModel : ObservableObject
 
     [ObservableProperty]
     private string value = string.Empty;
+
+    [ObservableProperty]
+    private bool hasError;
+
+    [ObservableProperty]
+    private string errorMessage = string.Empty;
+
+    partial void OnValueChanged(string value)
+    {
+        HasError = false;
+        ErrorMessage = string.Empty;
+    }
 }

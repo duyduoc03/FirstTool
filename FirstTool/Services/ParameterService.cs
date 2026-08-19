@@ -37,13 +37,18 @@ public class ParameterService
 
         foreach (var model in parameters)
         {
+            model.HasError = false;
+            model.ErrorMessage = string.Empty;
+
             if (model.IsReadOnly) continue;
             if (string.Equals(model.Value, model.OriginalValue, StringComparison.Ordinal)) continue;
 
             Parameter param = FindParameter(element, model.Id);
             if (param == null)
             {
-                errors.Add($"{model.Name}: không tìm thấy parameter.");
+                model.HasError = true;
+                model.ErrorMessage = "Không tìm thấy parameter.";
+                errors.Add($"{model.Name}: {model.ErrorMessage}");
                 continue;
             }
 
@@ -53,6 +58,8 @@ public class ParameterService
             }
             catch (Exception ex)
             {
+                model.HasError = true;
+                model.ErrorMessage = ex.Message;
                 errors.Add($"{model.Name}: {ex.Message}");
             }
         }

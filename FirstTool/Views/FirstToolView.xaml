@@ -80,7 +80,7 @@
         <TextBlock
             Grid.Row="2"
             Text="{Binding StatusText}"
-            Foreground="Gray"
+            Foreground="{Binding StatusColor}"
             Margin="0,0,0,10"/>
 
 
@@ -165,29 +165,19 @@
                     <DataGridTextColumn.CellStyle>
 
                         <Style TargetType="{x:Type DataGridCell}">
-
+                            <Setter Property="ToolTip" Value="{Binding ErrorMessage}"/>
                             <Style.Triggers>
-
-                                <DataTrigger
-                                    Binding="{Binding IsReadOnly}"
-                                    Value="True">
-
-                                    <Setter
-                                        Property="Background"
-                                        Value="#F0F0F0"/>
-
-                                    <Setter
-                                        Property="Foreground"
-                                        Value="Gray"/>
-
-                                    <Setter
-                                        Property="Focusable"
-                                        Value="False"/>
-
+                                <DataTrigger Binding="{Binding IsReadOnly}" Value="True">
+                                    <Setter Property="Background" Value="#F0F0F0"/>
+                                    <Setter Property="Foreground" Value="Gray"/>
+                                    <Setter Property="Focusable" Value="False"/>
                                 </DataTrigger>
-
+                                <DataTrigger Binding="{Binding HasError}" Value="True" >
+                                    <Setter Property="Background" Value="#FFCDD2"/>
+                                    <Setter Property="BorderBrush" Value="#C62828"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                </DataTrigger>
                             </Style.Triggers>
-
                         </Style>
 
                     </DataGridTextColumn.CellStyle>

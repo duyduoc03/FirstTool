@@ -2,6 +2,7 @@ using Autodesk.Revit.UI;
 using FirstTool.Models;
 using FirstTool.Services;
 using System.Collections.ObjectModel;
+using System.Windows.Media;
 
 namespace FirstTool.ViewModels;
 
@@ -17,6 +18,7 @@ public sealed partial class FirstToolViewModel : ObservableObject
 
     [ObservableProperty] private ObservableCollection<ParameterModel> parameters = new();
     [ObservableProperty] private string statusText = string.Empty;
+    [ObservableProperty] private Brush statusColor = Brushes.Gray;
 
     public FirstToolViewModel(Action bringWindowToFront)
     {
@@ -81,7 +83,8 @@ public sealed partial class FirstToolViewModel : ObservableObject
         Document doc = app.ActiveUIDocument.Document;
         if (selectedColumnElement == null)
         {
-            TaskDialog.Show("Thông báo", "Chưa chọn cột nào để áp dụng.");
+            StatusText = "Chưa chọn cột nào để áp dụng.";
+            StatusColor = Brushes.Red;
             return;
         }
 
@@ -96,7 +99,8 @@ public sealed partial class FirstToolViewModel : ObservableObject
 
         if (errors.Count > 0)
         {
-            TaskDialog.Show("Có lỗi khi cập nhật", string.Join("\n", errors));
+            StatusText = string.Join("\n", errors);
+            StatusColor = Brushes.Red;
             return;
         }
 
