@@ -1,141 +1,163 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
-using RevitTool.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using FirstTool.Models;
 
-namespace RevitTool.Services
+namespace FirstTool.Services;
+
+public class ColumnPlacementService
 {
-    public class ColumnPlacementService
+    private const int MaxColumnsPerRun = 500;
+
+    public int PlaceColumnsBetween(
+        Document doc, Element mainColumn1, Element mainColumn2, FamilySymbol columnType,
+        PlacementMode mode, double spacing, int columnCount)
     {
-        private const int MaxColumnsPerRun = 500;
+        if (mainColumn1 == null || mainColumn2 == null)
+            throw new ArgumentException("Chưa chọn đủ 2 cột chính.");
 
-        private XYZ GetColumnBasePoint(Element column)
+        if (mainColumn1.Id == mainColumn2.Id)
+            throw new ArgumentException("Hai cột chính không được trùng nhau.");
+
+        if (columnType == null)
+            throw new ArgumentException("Chưa chọn Family Type cho cột phụ.");
+
+        XYZ p1 = GetColumnBasePoint(mainColumn1);
+        XYZ p2 = GetColumnBasePoint(mainColumn2);
+
+        double totalLength = p1.DistanceTo(p2);
+        if (totalLength < 1e-6)
+            throw new InvalidOperationException("Hai cột chính đang ở cùng một vị trí.");
+
+        List<double> fractions = mode == PlacementMode.BySpacing
+            ? BuildFractionsBySpacing(totalLength, spacing)
+            : BuildFractionsByCount(columnCount);
+
+        if (fractions.Count > MaxColumnsPerRun)
+            throw new InvalidOperationException(
+                $"Số lượng cột phụ ({fractions.Count}) vượt quá giới hạn cho phép ({MaxColumnsPerRun}).\n" +
+                "Vui lòng kiểm tra lại khoảng cách hoặc số lượng đã nhập.");
+
+        XYZ direction = (p2 - p1).Normalize();
+        var (baseLevel, baseOffset, topId, topOffset) = GetColumnLevels(doc, mainColumn1);
+
+        if (baseLevel == null)
+            throw new InvalidOperationException("Không tìm thấy Base Level của cột chính.");
+
+        double rotation1 = GetColumnRotation(mainColumn1);
+        double rotation2 = GetColumnRotation(mainColumn2);
+
+        if (!columnType.IsActive)
+            columnType.Activate();
+
+        int createdCount = 0;
+
+        foreach (double t in fractions)
         {
-            if (column.Location is LocationPoint lp)
-                return lp.Point;
+            XYZ point = p1 + direction * (totalLength * t);
+            double rotation = InterpolateAngle(rotation1, rotation2, t);
 
-            if (column.Location is LocationCurve lc)
-                return lc.Curve.GetEndPoint(0);
-
-            throw new InvalidOperationException($"Không xác định được vị trí của cột {column.Id}.");
+            CreateColumnAt(doc, point, columnType, baseLevel, baseOffset, topId, topOffset, rotation);
+            createdCount++;
         }
 
-        // Lấy cao độ Base/Top của cột chính để cột phụ có cùng chiều cao
-        private (Level baseLevel, double baseOffset, ElementId topId, double topOffset) GetColumnLevels(Document doc, Element column)
-        {
-            Parameter baseLevelParam = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_PARAM);
-            Parameter baseOffsetParam = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM);
-            Parameter topLevelParam = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM);
-            Parameter topOffsetParam = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM);
+        return createdCount;
+    }
 
-            if (baseLevelParam == null || topLevelParam == null)
-                throw new InvalidOperationException("Cột được chọn không có thông tin Base/Top Level.");
-
-            Level baseLevel = doc.GetElement(baseLevelParam.AsElementId()) as Level;
-            double baseOffset = baseOffsetParam?.AsDouble() ?? 0;
-            ElementId topId = topLevelParam.AsElementId();
-            double topOffset = topOffsetParam?.AsDouble() ?? 0;
-
-            return (baseLevel, baseOffset, topId, topOffset);
-        }
-
-        private double GetColumnRotation(Element column)
-        {
-            if (column.Location is LocationPoint lp)
-                return lp.Rotation;
-
-            return 0;
-        }
-
-        public int PlaceColumnsBetween(Document doc, Element mainColumn1, Element mainColumn2, FamilySymbol columnType, double spacing)
-        {
-            if (mainColumn1 == null || mainColumn2 == null)
-                throw new ArgumentException("Chưa chọn đủ 2 cột chính.");
-
-            if (mainColumn1.Id == mainColumn2.Id)
-                throw new ArgumentException("Hai cột chính không được trùng nhau.");
-
-            if (columnType == null)
-                throw new ArgumentException("Chưa chọn Family Type cho cột phụ.");
-
-            if (spacing <= 0)
-                throw new ArgumentException("Khoảng cách bố trí phải lớn hơn 0.");
-
-            XYZ p1 = GetColumnBasePoint(mainColumn1);
-            XYZ p2 = GetColumnBasePoint(mainColumn2);
-
-            double totalLength = p1.DistanceTo(p2);
-            if (totalLength < 1e-6)
-                throw new InvalidOperationException("Hai cột chính đang ở cùng một vị trí.");
-
-            int segmentCount = (int)Math.Floor(totalLength / spacing);
-            int columnsToCreate = Math.Max(0, segmentCount - 1);
-
-            if (columnsToCreate > MaxColumnsPerRun)
+    public List<FamilyTypeModel> GetAvailableColumnTypes(Document doc)
+    {
+        return new FilteredElementCollector(doc)
+            .OfClass(typeof(FamilySymbol))
+            .OfCategory(BuiltInCategory.OST_StructuralColumns)
+            .Cast<FamilySymbol>()
+            .Select(fs => new FamilyTypeModel
             {
-                double lengthMm = UnitUtils.ConvertFromInternalUnits(totalLength, UnitTypeId.Millimeters);
-                throw new InvalidOperationException(
-                    $"Khoảng cách bố trí quá nhỏ so với chiều dài đoạn nối ({lengthMm:F0} mm).\n" +
-                    $"Với khoảng cách hiện tại sẽ tạo {columnsToCreate} cột, vượt quá giới hạn cho phép ({MaxColumnsPerRun} cột).\n" +
-                    $"Vui lòng kiểm tra lại đơn vị hoặc tăng khoảng cách.");
-            }
+                Id = fs.Id,
+                Name = $"{fs.FamilyName} : {fs.Name}",
+                Symbol = fs
+            })
+            .ToList();
+    }
 
-            XYZ direction = (p2 - p1).Normalize();
+    private List<double> BuildFractionsBySpacing(double totalLength, double spacing)
+    {
+        if (spacing <= 0)
+            throw new ArgumentException("Khoảng cách bố trí phải lớn hơn 0.");
 
-            var (baseLevel, baseOffset, topId, topOffset) = GetColumnLevels(doc, mainColumn1);
-            if (baseLevel == null)
-                throw new InvalidOperationException("Không tìm thấy Base Level của cột chính.");
+        int segmentCount = (int)Math.Floor(totalLength / spacing);
+        var fractions = new List<double>();
 
-            // Lấy góc xoay thực tế từ cột chính 1 — áp dụng cho toàn bộ cột phụ
-            double rotation = GetColumnRotation(mainColumn1);
+        for (int i = 1; i < segmentCount; i++)
+            fractions.Add(spacing * i / totalLength);
 
-            if (!columnType.IsActive)
-                columnType.Activate();
+        return fractions;
+    }
 
-            int createdCount = 0;
+    private List<double> BuildFractionsByCount(int columnCount)
+    {
+        if (columnCount <= 0)
+            throw new ArgumentException("Số lượng cột phụ phải lớn hơn 0.");
 
-            for (int i = 1; i < segmentCount; i++)
-            {
-                XYZ point = p1 + direction * (spacing * i);
+        var fractions = new List<double>();
+        int divisions = columnCount + 1;
 
-                FamilyInstance newColumn = doc.Create.NewFamilyInstance(
-                    point, columnType, baseLevel, StructuralType.Column);
+        for (int i = 1; i <= columnCount; i++)
+            fractions.Add((double)i / divisions);
 
-                newColumn.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM)?.Set(baseOffset);
-                if (topId != ElementId.InvalidElementId)
-                {
-                    newColumn.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM)?.Set(topId);
-                    newColumn.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM)?.Set(topOffset);
-                }
+        return fractions;
+    }
 
-                // Xoay cột phụ theo đúng góc xoay của cột chính
-                if (Math.Abs(rotation) > 1e-6)
-                {
-                    Line axis = Line.CreateBound(point, point + XYZ.BasisZ);
-                    ElementTransformUtils.RotateElement(doc, newColumn.Id, axis, rotation);
-                }
+    // Nội suy góc xoay theo đường ngắn nhất, tránh lệch pha 2π gây xoay sai hướng
+    private double InterpolateAngle(double from, double to, double t)
+    {
+        double delta = to - from;
+        while (delta > Math.PI) delta -= 2 * Math.PI;
+        while (delta < -Math.PI) delta += 2 * Math.PI;
+        return from + delta * t;
+    }
 
-                createdCount++;
-            }
+    private void CreateColumnAt(Document doc, XYZ point, FamilySymbol columnType, Level baseLevel,
+        double baseOffset, ElementId topId, double topOffset, double rotation)
+    {
+        FamilyInstance newColumn = doc.Create.NewFamilyInstance(point, columnType, baseLevel, StructuralType.Column);
 
-            return createdCount;
-        }
-
-        public List<FamilyTypeModel> GetAvailableColumnTypes(Document doc)
+        newColumn.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM)?.Set(baseOffset);
+        if (topId != ElementId.InvalidElementId)
         {
-            return new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilySymbol))
-                .OfCategory(BuiltInCategory.OST_StructuralColumns)
-                .Cast<FamilySymbol>()
-                .Select(fs => new FamilyTypeModel
-                {
-                    Id = fs.Id,
-                    Name = $"{fs.FamilyName} : {fs.Name}",
-                    Symbol = fs
-                })
-                .ToList();
+            newColumn.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM)?.Set(topId);
+            newColumn.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM)?.Set(topOffset);
         }
+
+        if (Math.Abs(rotation) > 1e-6)
+        {
+            Line axis = Line.CreateBound(point, point + XYZ.BasisZ);
+            ElementTransformUtils.RotateElement(doc, newColumn.Id, axis, rotation);
+        }
+    }
+
+    private XYZ GetColumnBasePoint(Element column) => column.Location switch
+    {
+        LocationPoint lp => lp.Point,
+        LocationCurve lc => lc.Curve.GetEndPoint(0),
+        _ => throw new InvalidOperationException($"Không xác định được vị trí của cột {column.Id}.")
+    };
+
+    private double GetColumnRotation(Element column) =>
+        column.Location is LocationPoint lp ? lp.Rotation : 0;
+
+    private (Level baseLevel, double baseOffset, ElementId topId, double topOffset) GetColumnLevels(Document doc, Element column)
+    {
+        Parameter baseLevelParam = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_PARAM);
+        Parameter baseOffsetParam = column.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM);
+        Parameter topLevelParam = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM);
+        Parameter topOffsetParam = column.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM);
+
+        if (baseLevelParam == null || topLevelParam == null)
+            throw new InvalidOperationException("Cột được chọn không có thông tin Base/Top Level.");
+
+        return (
+            doc.GetElement(baseLevelParam.AsElementId()) as Level,
+            baseOffsetParam?.AsDouble() ?? 0,
+            topLevelParam.AsElementId(),
+            topOffsetParam?.AsDouble() ?? 0);
     }
 }

@@ -5,13 +5,28 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:viewModel="clr-namespace:FirstTool.ViewModels"
+    xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     mc:Ignorable="d"
-    d:DataContext="{d:DesignInstance viewModel:FirstToolViewModel}"
+    d:DataContext="{d:DesignInstance Type=viewModel:FirstToolViewModel}"
     ResizeMode="NoResize"
     WindowStartupLocation="CenterScreen"
     Title="Column Tool"
     Height="600"
     Width="900">
+
+    <Window.Resources>
+
+        <CollectionViewSource
+            x:Key="GroupedParameters"
+            Source="{Binding Parameters}">
+
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="GroupName"/>
+            </CollectionViewSource.GroupDescriptions>
+
+        </CollectionViewSource>
+
+    </Window.Resources>
 
     <Grid Margin="15">
 
@@ -23,6 +38,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+
         <!-- Header -->
         <TextBlock
             Grid.Row="0"
@@ -30,6 +46,7 @@
             FontSize="24"
             FontWeight="Bold"
             Margin="0,0,0,15"/>
+
 
         <!-- Buttons -->
         <StackPanel
@@ -55,7 +72,9 @@
                 Background="#1976D2"
                 BorderBrush="#1976D2"
                 Foreground="White"/>
+
         </StackPanel>
+
 
         <!-- Status -->
         <TextBlock
@@ -64,49 +83,129 @@
             Foreground="Gray"
             Margin="0,0,0,10"/>
 
+
         <!-- Parameters -->
         <DataGrid
             Grid.Row="3"
-            ItemsSource="{Binding Parameters}"
+            ItemsSource="{Binding Source={StaticResource GroupedParameters}}"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             HeadersVisibility="Column"
+            HorizontalScrollBarVisibility="Disabled"
             Margin="0,0,0,15"
-            BeginningEdit="DataGrid_BeginningEdit">
+            BeginningEdit="DataGrid_BeginningEdit"
+            SelectionChanged="DataGrid_SelectionChanged">
 
+            <!-- Group -->
+            <DataGrid.GroupStyle>
+
+                <GroupStyle>
+
+                    <GroupStyle.ContainerStyle>
+
+                        <Style TargetType="{x:Type GroupItem}">
+
+                            <Setter Property="Template">
+
+                                <Setter.Value>
+
+                                    <ControlTemplate TargetType="{x:Type GroupItem}">
+
+                                        <Expander
+                                            IsExpanded="True"
+                                            Background="#E0E0E0"
+                                            BorderBrush="#C0C0C0"
+                                            BorderThickness="0,0,0,1">
+
+                                            <Expander.Header>
+
+                                                <TextBlock
+                                                    Text="{Binding Name}"
+                                                    FontWeight="Bold"
+                                                    Margin="4,2"/>
+
+                                            </Expander.Header>
+
+                                            <ItemsPresenter/>
+
+                                        </Expander>
+
+                                    </ControlTemplate>
+
+                                </Setter.Value>
+
+                            </Setter>
+
+                        </Style>
+
+                    </GroupStyle.ContainerStyle>
+
+                </GroupStyle>
+
+            </DataGrid.GroupStyle>
+
+
+            <!-- Columns -->
             <DataGrid.Columns>
 
+                <!-- Parameter Name -->
                 <DataGridTextColumn
                     Header="Parameter"
                     Binding="{Binding Name}"
                     Width="2*"
                     IsReadOnly="True"/>
 
+
+                <!-- Parameter Value -->
                 <DataGridTextColumn
                     Header="Value"
                     Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                     Width="2*">
+
                     <DataGridTextColumn.CellStyle>
-                        <Style TargetType="DataGridCell">
+
+                        <Style TargetType="{x:Type DataGridCell}">
+
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsReadOnly}" Value="True">
-                                    <Setter Property="Background" Value="#F0F0F0"/>
-                                    <Setter Property="Foreground" Value="Gray"/>
-                                    <Setter Property="Focusable" Value="False"/>
+
+                                <DataTrigger
+                                    Binding="{Binding IsReadOnly}"
+                                    Value="True">
+
+                                    <Setter
+                                        Property="Background"
+                                        Value="#F0F0F0"/>
+
+                                    <Setter
+                                        Property="Foreground"
+                                        Value="Gray"/>
+
+                                    <Setter
+                                        Property="Focusable"
+                                        Value="False"/>
+
                                 </DataTrigger>
+
                             </Style.Triggers>
+
                         </Style>
+
                     </DataGridTextColumn.CellStyle>
+
                 </DataGridTextColumn>
 
+
+                <!-- Storage Type -->
                 <DataGridTextColumn
                     Header="Type"
                     Binding="{Binding StorageType}"
                     Width="*"
                     IsReadOnly="True"/>
-                
+
             </DataGrid.Columns>
+
         </DataGrid>
+
 
         <!-- Bottom buttons -->
         <StackPanel
@@ -133,4 +232,5 @@
         </StackPanel>
 
     </Grid>
+
 </Window>

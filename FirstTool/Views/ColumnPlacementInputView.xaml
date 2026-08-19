@@ -8,7 +8,7 @@
     ResizeMode="NoResize"
     WindowStartupLocation="CenterOwner"
     Title="Thiết lập cột phụ"
-    Height="220"
+    Height="260"
     Width="380">
 
     <Grid Margin="20">
@@ -16,15 +16,11 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock
-            Grid.Row="0"
-            Text="Family Type cột phụ"
-            Margin="0,0,0,5"/>
+        <TextBlock Grid.Row="0" Text="Family Type cột phụ" Margin="0,0,0,5"/>
 
         <ComboBox
             Grid.Row="1"
@@ -33,46 +29,40 @@
             DisplayMemberPath="Name"
             SelectedItem="{Binding SelectedFamilyType}"
             Margin="0,0,0,15"/>
+        
+        <TextBlock Grid.Row="2" Text="Placement Mode:" VerticalAlignment="Center" Margin="0,0,0,10"/>
+        <Grid Grid.Row="3" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="50*"/>
+                <ColumnDefinition Width="50*"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <RadioButton
+                    x:Name="BySpacingRadio"
+                    GroupName="PlacementMode"
+                    Content="Theo khoảng cách (mm)"
+                    IsChecked="True"
+                    Checked="ModeRadio_Checked"
+                    Margin="0,0,0,5"/>
 
-        <TextBlock
-            Grid.Row="2"
-            Text="Khoảng cách bố trí (mm)"
-            Margin="0,0,0,5"/>
+                <TextBox  x:Name="SpacingTextBox" Margin="0,0,0,15"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                <RadioButton
+                    x:Name="ByCountRadio"
+                    GroupName="PlacementMode"
+                    Content="Theo số lượng cột phụ"
+                    Checked="ModeRadio_Checked"
+                    Margin="0,0,0,5"/>
 
-        <TextBox
-            Grid.Row="3"
-            x:Name="SpacingTextBox"
-            Text="{Binding SpacingInput, UpdateSourceTrigger=PropertyChanged}"
-            Margin="0,0,0,15"/>
+                <TextBox x:Name="CountTextBox" IsEnabled="False" Margin="0,0,0,15"/>
+            </StackPanel>
+        </Grid>
 
-        <TextBlock
-            Grid.Row="4"
-            x:Name="ErrorText"
-            Text="{Binding ErrorMessage}"
-            Foreground="Red"
-            TextWrapping="Wrap"
-            VerticalAlignment="Top"/>
-
-        <StackPanel
-            Grid.Row="5"
-            Orientation="Horizontal"
-            HorizontalAlignment="Right">
-
-            <Button
-                Width="90"
-                Height="30"
-                Margin="0,0,10,0"
-                Content="Huỷ"
-                Click="CancelButton_Click"/>
-
-            <Button
-                Width="90"
-                Height="30"
-                Content="OK"
-                Background="#1976D2"
-                Foreground="White"
-                Click="OkButton_Click"/>
-
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Width="90" Height="30" Margin="0,0,10,0" Content="Huỷ" Click="CancelButton_Click"/>
+            <Button Width="90" Height="30" Content="OK" Background="#1976D2" Foreground="White" Click="OkButton_Click"/>
         </StackPanel>
     </Grid>
 </Window>

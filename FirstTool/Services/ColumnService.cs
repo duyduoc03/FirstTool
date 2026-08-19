@@ -1,56 +1,42 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-using RevitTool.Models;
-using System;
-using System.Collections.Generic;
+using FirstTool.Models;
 
-namespace RevitTool.Services
+namespace FirstTool.Services;
+
+public class ColumnService
 {
-    public class ColumnService
+    public List<ColumnModel> PickTwoColumns(UIDocument uiDoc, Document doc)
     {
-        // Chọn 2 cột chính, dùng cho Tool 1
-        public List<ColumnModel> PickTwoColumns(UIDocument uiDoc, Document doc)
-        {
-            var result = new List<ColumnModel>();
+        Element el1 = PickElement(uiDoc, doc, "Chọn cột chính 1");
+        Element el2 = PickElement(uiDoc, doc, "Chọn cột chính 2");
 
-            Reference ref1 = uiDoc.Selection.PickObject(ObjectType.Element, "Chọn cột chính 1");
-            Element el1 = doc.GetElement(ref1.ElementId);
+        if (el1.Id == el2.Id)
+            throw new InvalidOperationException("Không thể chọn cùng một cột.");
 
-            Reference ref2 = uiDoc.Selection.PickObject(ObjectType.Element, "Chọn cột chính 2");
-            Element el2 = doc.GetElement(ref2.ElementId);
-
-            if (el1 == null || el2 == null)
-                throw new InvalidOperationException("Chưa chọn đủ 2 cột.");
-
-            if (el1.Id == el2.Id)
-                throw new InvalidOperationException("Không thể chọn cùng một cột.");
-
-            result.Add(ToColumnModel(el1));
-            result.Add(ToColumnModel(el2));
-
-            return result;
-        }
-
-        // Chọn 1 cột, dùng cho Tool 2
-        public ColumnModel PickOneColumn(UIDocument uiDoc, Document doc)
-        {
-            Reference reference = uiDoc.Selection.PickObject(ObjectType.Element, "Chọn cột");
-            Element el = doc.GetElement(reference.ElementId);
-
-            if (el == null)
-                throw new InvalidOperationException("Chưa chọn cột nào.");
-
-            return ToColumnModel(el);
-        }
-
-        private ColumnModel ToColumnModel(Element el)
-        {
-            return new ColumnModel
-            {
-                Id = el.Id,
-                Name = el.Name
-            };
-        }
+        return [ToColumnModel(el1), ToColumnModel(el2)];
     }
+
+    public ColumnModel PickOneColumn(UIDocument uiDoc, Document doc)
+    {
+        return ToColumnModel(PickElement(uiDoc, doc, "Chọn cột"));
+    }
+
+    private Element PickElement(UIDocument uiDoc, Document doc, string prompt)
+    {
+        Reference reference = uiDoc.Selection.PickObject(ObjectType.Element, prompt);
+        Element element = doc.GetElement(reference.ElementId);
+
+        if (element == null)
+            throw new InvalidOperationException("Không tìm thấy phần tử đã chọn.");
+
+        return element;
+    }
+
+    private ColumnModel ToColumnModel(Element element) => new()
+    {
+        Id = element.Id,
+        Name = element.Name
+    };
 }
