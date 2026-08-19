@@ -9,7 +9,8 @@ namespace RevitTool.Services
 {
     public class ColumnPlacementService
     {
-        // Lấy điểm gốc (base point) thực tế của 1 cột, xử lý cả LocationPoint lẫn LocationCurve
+        private const int MaxColumnsPerRun = 500;
+
         private XYZ GetColumnBasePoint(Element column)
         {
             if (column.Location is LocationPoint lp)
@@ -40,10 +41,14 @@ namespace RevitTool.Services
             return (baseLevel, baseOffset, topId, topOffset);
         }
 
-        /// <summary>
-        /// Tạo các cột phụ giữa 2 cột chính theo khoảng cách chỉ định.
-        /// Trả về số lượng cột phụ đã tạo thành công.
-        /// </summary>
+        private double GetColumnRotation(Element column)
+        {
+            if (column.Location is LocationPoint lp)
+                return lp.Rotation;
+
+            return 0;
+        }
+
         public int PlaceColumnsBetween(Document doc, Element mainColumn1, Element mainColumn2, FamilySymbol columnType, double spacing)
         {
             if (mainColumn1 == null || mainColumn2 == null)
@@ -65,30 +70,39 @@ namespace RevitTool.Services
             if (totalLength < 1e-6)
                 throw new InvalidOperationException("Hai cột chính đang ở cùng một vị trí.");
 
+            int segmentCount = (int)Math.Floor(totalLength / spacing);
+            int columnsToCreate = Math.Max(0, segmentCount - 1);
+
+            if (columnsToCreate > MaxColumnsPerRun)
+            {
+                double lengthMm = UnitUtils.ConvertFromInternalUnits(totalLength, UnitTypeId.Millimeters);
+                throw new InvalidOperationException(
+                    $"Khoảng cách bố trí quá nhỏ so với chiều dài đoạn nối ({lengthMm:F0} mm).\n" +
+                    $"Với khoảng cách hiện tại sẽ tạo {columnsToCreate} cột, vượt quá giới hạn cho phép ({MaxColumnsPerRun} cột).\n" +
+                    $"Vui lòng kiểm tra lại đơn vị hoặc tăng khoảng cách.");
+            }
+
             XYZ direction = (p2 - p1).Normalize();
 
             var (baseLevel, baseOffset, topId, topOffset) = GetColumnLevels(doc, mainColumn1);
             if (baseLevel == null)
                 throw new InvalidOperationException("Không tìm thấy Base Level của cột chính.");
 
+            // Lấy góc xoay thực tế từ cột chính 1 — áp dụng cho toàn bộ cột phụ
+            double rotation = GetColumnRotation(mainColumn1);
+
             if (!columnType.IsActive)
                 columnType.Activate();
 
             int createdCount = 0;
-            int segmentCount = (int)Math.Floor(totalLength / spacing);
 
-            // Đặt cột phụ tại các điểm chia đều, không trùng vị trí 2 cột chính (bỏ qua điểm đầu/cuối)
             for (int i = 1; i < segmentCount; i++)
             {
                 XYZ point = p1 + direction * (spacing * i);
 
                 FamilyInstance newColumn = doc.Create.NewFamilyInstance(
-                    point,
-                    columnType,
-                    baseLevel,
-                    StructuralType.Column);
+                    point, columnType, baseLevel, StructuralType.Column);
 
-                // Gán lại Base/Top offset và Top level giống cột chính để đồng bộ chiều cao
                 newColumn.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM)?.Set(baseOffset);
                 if (topId != ElementId.InvalidElementId)
                 {
@@ -96,12 +110,11 @@ namespace RevitTool.Services
                     newColumn.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM)?.Set(topOffset);
                 }
 
-                // Xoay cột phụ theo hướng của đoạn nối 2 cột chính (nếu không thẳng trục X)
-                double angle = Math.Atan2(direction.Y, direction.X);
-                if (Math.Abs(angle) > 1e-6)
+                // Xoay cột phụ theo đúng góc xoay của cột chính
+                if (Math.Abs(rotation) > 1e-6)
                 {
                     Line axis = Line.CreateBound(point, point + XYZ.BasisZ);
-                    ElementTransformUtils.RotateElement(doc, newColumn.Id, axis, angle);
+                    ElementTransformUtils.RotateElement(doc, newColumn.Id, axis, rotation);
                 }
 
                 createdCount++;

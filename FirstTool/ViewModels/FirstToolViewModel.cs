@@ -4,6 +4,8 @@ using RevitTool.Models;
 using RevitTool.Services;
 using System.Collections.ObjectModel;
 
+namespace FirstTool.ViewModels;
+
 public sealed partial class FirstToolViewModel : ObservableObject
 {
     private readonly RevitEventHandler revitEvent = new();
