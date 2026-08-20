@@ -104,6 +104,8 @@ public sealed partial class FirstToolViewModel : ObservableObject
             return;
         }
 
+        StatusText = "Đã cập nhật parameter thành công.";
+        StatusColor = Brushes.Green;
         TaskDialog.Show("Thành công", "Đã cập nhật parameter thành công.");
         LoadParameters(doc);
     });
